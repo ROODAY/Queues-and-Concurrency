@@ -35,7 +35,7 @@ public class Controller {
 	public static LinkedList<Event> initSchedule(){
 		LinkedList<Event> schedule = new LinkedList<Event>();
 		
-		Device cpu = new MM2("cpu", schedule, deviceList, processes, 40, 0.02);
+		Device cpu = new MM2("cpu", schedule, deviceList, processes, 2, 0.248, 38, 0.008);
 		cpu.initializeScehduleWithOneEvent();
 		devices.add(cpu);
     deviceList.put("cpu", cpu);
@@ -66,66 +66,46 @@ public class Controller {
 	
 	
 	public static void main(String[] args){
-    int trials = 20;
-    double[] tqs = new double[trials];
-    double[] slows = new double[trials];
-    for (int i = 0; i < trials; i++) {
-      LinkedList<Event> schedule = initSchedule();
-      
-      double time = 0, maxTime = SIMULATION_TIME;
-      while(time < maxTime){
-        Event event = getNextEvent(schedule);
-        time = event.getTime();
-        event.function(schedule, time);
-      }
-      
-      for(Device device: devices){
-        device.printStats();
-      }
+		LinkedList<Event> schedule = initSchedule();
+		
+		double time = 0, maxTime = SIMULATION_TIME;
+		while(time < maxTime){
+			Event event = getNextEvent(schedule);
+			time = event.getTime();
+			event.function(schedule, time);
+		}
+		
+		for(Device device: devices){
+			device.printStats();
+		}
 
-      double systemTq = 0;
-      for (Process p:processes) {
-        systemTq += p.totalTq();
+    double cpuTq = 0;
+    double cpuTw = 0;
+    double ioTq = 0;
+    double ioTw = 0;
+    for (Process p:processes) {
+      if (p.type == 0) {
+        cpuTq += p.totalTq();
+        cpuTw += p.totalTw();
+      } else {
+        ioTq += p.totalTq();
+        ioTw += p.totalTw();
       }
-      systemTq /= processes.size();
-
-      double systemTw = 0;
-      for (Process p:processes) {
-        systemTw += p.totalTw();
-      }
-      systemTw /= processes.size();
-
-      System.out.println("************************************");
-      System.out.println("************************************");
-      System.out.println("************************************");
-      System.out.println("System tq: " + systemTq);
-      System.out.println("System tw: " + systemTw);
-      System.out.println("System Slowdown: " + (systemTq/(systemTq - systemTw)));
-      tqs[i] = systemTq;
-      slows[i] = (systemTq/(systemTq - systemTw));
     }
-    double avgTq = 0.0;
-    double avgSlow = 0.0;
-    for (int i = 0; i < trials; i++) {
-      avgTq += tqs[i];
-      avgSlow += slows[i];
-    }
+    cpuTq /= processes.size();
+    cpuTw /= processes.size();
+    ioTq /= processes.size();
+    ioTw /= processes.size();
 
-    avgTq /= trials;
-    avgSlow /= trials;
-
-    double varTq = 0.0;
-    double varSlow = 0.0;
-    for (int i = 0; i < trials; i++) {
-        varTq += Math.pow((tqs[i] - avgTq), 2);
-        varSlow += Math.pow((slows[i] - avgSlow), 2);
-    }
-    varTq /= (trials - 1);
-    varSlow /= (trials - 1);
-    double sdTq = Math.sqrt(varTq);
-    double sdSlow = Math.sqrt(varSlow);
-    System.out.println("Average Turnaround Time 97% CI: " + avgTq + " +- " + (2.17 * sdTq));
-    System.out.println("Average Slowdown 97% CI: " + avgSlow + " +- " + (2.17 * sdSlow));
+    System.out.println("************************************");
+    System.out.println("************************************");
+    System.out.println("************************************");
+    System.out.println("CPU tq: " + cpuTq);
+    System.out.println("CPU tw: " + cpuTw);
+    System.out.println("CPU Slowdown: " + (cpuTq/(cpuTq - cpuTw)));
+    System.out.println("IO tq: " + ioTq);
+    System.out.println("IO tw: " + ioTw);
+    System.out.println("IO Slowdown: " + (ioTq/(ioTq - ioTw)));
 	}
 	
 }

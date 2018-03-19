@@ -2,6 +2,11 @@ import java.util.ArrayList;
 
 public class Process {
   public ArrayList<Request> history = new ArrayList<Request>();
+  public int type; // 0 = cpu 1 = i/o
+
+  public Process(int type) {
+    this.type = type;
+  }
 
   public void addStep(Request req) {
     history.add(req);

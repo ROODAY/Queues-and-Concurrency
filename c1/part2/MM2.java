@@ -5,27 +5,24 @@ import java.util.ArrayList;
 
 public class MM2 extends MM1 {
 
-  public MM2(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, double lambda, double ts){
+  // For I/O bound processes
+  public final double LAMBDA2;
+  public final double TS2;
+
+  public MM2(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, double lambda, double ts, double lambda2, double ts2){
     super(name, schedule, deviceList, processes, lambda, ts);
+    this.LAMBDA2 = lambda2;
+    this.TS2 = ts2;
   }
 
   public int serving = 0;
-  public Request[] servers = new Request[2];
-  public double[] deaths = new double[2];
 
   @Override
   public void onDeath(Event ev, double timestamp){
     /**
      * request has finished and left the mm1
      */
-    Request req;
-    if (deaths[0] == timestamp) {
-      req = servers[0];
-      servers[0] = null;
-    } else {
-      req = servers[1];
-      servers[1] = null;
-    }
+    Request req = queue.remove();
     req.setEndedProcessing(timestamp);
     log.add(req);
     ev.process.addStep(req);
@@ -37,17 +34,10 @@ public class MM2 extends MM1 {
      */
     while(queue.size() > serving && serving < 2){
       serving++;
-      Request request = queue.remove();
+      Object[] requests = queue.toArray();
+      Request request = ((Request) requests[serving - 1]);
       request.setStartedProcessing(timestamp);
-      double time = timestamp + getTimeOfNextDeath();
-      if (servers[0] == null) {
-        servers[0] = request;
-        deaths[0] = time;
-      } else if (servers[1] == null) {
-        servers[1] = request;
-        deaths[1] = time;
-      }
-      Event event = new Event(time, EventType.DEATH, this, request.process);
+      Event event = new Event(timestamp + getTimeOfNextDeath(request.process), EventType.DEATH, this, request.process);
       schedule.add(event);
     }
 
@@ -65,25 +55,18 @@ public class MM2 extends MM1 {
   public void onBirth(Event ev, double timestamp){
     Request req = new Request(timestamp, ev.process);
     queue.add(req);
-    //ev.process.addStep(req);
+    ev.process.addStep(req);
     
     
     /**
      * if the queue is empty then start executing directly there is no waiting time.
      */
-    if (queue.size() == 1 && serving < 2){
+    while(queue.size() > serving && serving < 2){
       serving++;
-      Request request = queue.remove();
+      Object[] requests = queue.toArray();
+      Request request = ((Request) requests[serving - 1]);
       request.setStartedProcessing(timestamp);
-      double time = timestamp + getTimeOfNextDeath();
-      if (servers[0] == null) {
-        servers[0] = request;
-        deaths[0] = time;
-      } else if (servers[1] == null) {
-        servers[1] = request;
-        deaths[1] = time;
-      }
-      Event event = new Event(time, EventType.DEATH, this, request.process);
+      Event event = new Event(timestamp + getTimeOfNextDeath(request.process), EventType.DEATH, this, request.process);
       schedule.add(event);
     }
     
@@ -91,39 +74,36 @@ public class MM2 extends MM1 {
       /**
        * schedule the next arrival
        */
-      Process process = new Process();
+      Process process = new Process(ev.process.type);
       processes.add(process);
-      double time = getTimeOfNextBirth();
+      double time = getTimeOfNextBirth(process);
       Event event = new Event(timestamp + time, EventType.BIRTH, this, process);
       event.setTag(true);
       schedule.add(event);
     }
   }
 
-  @Override
-  public void onMonitor(double timestamp, double startTime){
+  public double getTimeOfNextBirth(Process proc){
+    return proc.type == 0 ? Event.exp(LAMBDA) : Event.exp(LAMBDA2);
+  }
   
-    if(timestamp < startTime) {
-      //don't start lagging before the start time
-      //clear the logs
-      log.clear(); 
-      return;
-    }
+  public double getTimeOfNextDeath(Process proc){
+    return proc.type == 0 ? Event.exp(1.0/TS) : Event.exp(1.0/TS2);
+  }
 
-    //count the number of waiting requests
-    double w = 0;
-    for(Request r: queue){
-      if(r.isWaiting()) w++;
-    }
-    
-    //System.out.println("Monitor Event at time:" + timestamp);
-    //System.out.println("---------------------");
-    double[] qAndW = new double[2];
-    qAndW[0] = queue.size() + serving;
-    qAndW[1] = w;
-    
-    QandW.add(qAndW);
-        
+  @Override
+  public void initializeScehduleWithOneEvent() {
+    Process cpuProcess = new Process(0);
+    processes.add(cpuProcess);
+    Event cpuBirthEvent = new Event(getTimeOfNextBirth(cpuProcess), EventType.BIRTH, this, cpuProcess);
+    cpuBirthEvent.setTag(true);
+    schedule.add(cpuBirthEvent); 
+
+    Process ioProcess = new Process(1);
+    processes.add(ioProcess);
+    Event ioBirthEvent = new Event(getTimeOfNextBirth(ioProcess), EventType.BIRTH, this, ioProcess);
+    ioBirthEvent.setTag(true);
+    schedule.add(ioBirthEvent); 
   }
 
   @Override

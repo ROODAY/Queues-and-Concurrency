@@ -9,7 +9,6 @@ public class Request {
 	private Double tq;
 
   public Process process;
-  public int index;
 	
 	public Request(double startTime, Process process) {
 		// TODO Auto-generated constructor stub
