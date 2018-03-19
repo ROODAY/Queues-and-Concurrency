@@ -49,7 +49,7 @@ public class MM1 extends Device {
   public Device getNextDevice() {
     double prob = Controller.generator.nextDouble();
     Device device;
-    if (this.name == "cpu") {
+    if (this.name.equals("cpu")) {
       if (prob < 0.5) {
         device = null;
       } else if (prob < 0.9) {
@@ -57,13 +57,13 @@ public class MM1 extends Device {
       } else {
         device = deviceList.get("disk");
       }
-    } else if (this.name == "disk") {
+    } else if (this.name.equals("disk")) {
       if (prob < 0.5) {
         device = deviceList.get("cpu");
       } else {
         device = deviceList.get("net");
       }
-    } else if (this.name == "net") {
+    } else if (this.name.equals("net")) {
       device = deviceList.get("cpu");
     } else {
       device = null;
@@ -108,7 +108,6 @@ public class MM1 extends Device {
 	public void onBirth(Event ev, double timestamp){
 		Request request = new Request(timestamp, ev.process);
 		queue.add(request);
-    ev.process.addStep(request);
 		
 		
 		/**
@@ -125,7 +124,7 @@ public class MM1 extends Device {
 			/**
 			 * schedule the next arrival
 			 */
-      Process process = new Process(ev.process.type);
+      Process process = new Process(0);
       processes.add(process);
 			double time = getTimeOfNextBirth();
 			Event event = new Event(timestamp + time, EventType.BIRTH, this, process);

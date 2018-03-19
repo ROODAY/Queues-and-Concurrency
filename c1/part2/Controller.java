@@ -66,46 +66,95 @@ public class Controller {
 	
 	
 	public static void main(String[] args){
-		LinkedList<Event> schedule = initSchedule();
-		
-		double time = 0, maxTime = SIMULATION_TIME;
-		while(time < maxTime){
-			Event event = getNextEvent(schedule);
-			time = event.getTime();
-			event.function(schedule, time);
-		}
-		
-		for(Device device: devices){
-			device.printStats();
-		}
-
-    double cpuTq = 0;
-    double cpuTw = 0;
-    double ioTq = 0;
-    double ioTw = 0;
-    for (Process p:processes) {
-      if (p.type == 0) {
-        cpuTq += p.totalTq();
-        cpuTw += p.totalTw();
-      } else {
-        ioTq += p.totalTq();
-        ioTw += p.totalTw();
+    int trials = 20;
+    double[] cputqs = new double[trials];
+    double[] cpuslows = new double[trials];
+    double[] iotqs = new double[trials];
+    double[] ioslows = new double[trials];
+    for (int i = 0; i < trials; i++) {
+      LinkedList<Event> schedule = initSchedule();
+      
+      double time = 0, maxTime = SIMULATION_TIME;
+      while(time < maxTime){
+        Event event = getNextEvent(schedule);
+        time = event.getTime();
+        event.function(schedule, time);
       }
-    }
-    cpuTq /= processes.size();
-    cpuTw /= processes.size();
-    ioTq /= processes.size();
-    ioTw /= processes.size();
+      
+      for(Device device: devices){
+        device.printStats();
+      }
 
-    System.out.println("************************************");
-    System.out.println("************************************");
-    System.out.println("************************************");
-    System.out.println("CPU tq: " + cpuTq);
-    System.out.println("CPU tw: " + cpuTw);
-    System.out.println("CPU Slowdown: " + (cpuTq/(cpuTq - cpuTw)));
-    System.out.println("IO tq: " + ioTq);
-    System.out.println("IO tw: " + ioTw);
-    System.out.println("IO Slowdown: " + (ioTq/(ioTq - ioTw)));
+      double cpuTq = 0;
+      double cpuTw = 0;
+      double ioTq = 0;
+      double ioTw = 0;
+      for (Process p:processes) {
+        if (p.type == 0) {
+          cpuTq += p.totalTq();
+          cpuTw += p.totalTw();
+        } else {
+          ioTq += p.totalTq();
+          ioTw += p.totalTw();
+        }
+      }
+      cpuTq /= processes.size();
+      cpuTw /= processes.size();
+      ioTq /= processes.size();
+      ioTw /= processes.size();
+
+      System.out.println("************************************");
+      System.out.println("************************************");
+      System.out.println("************************************");
+      System.out.println("CPU tq: " + cpuTq);
+      System.out.println("CPU tw: " + cpuTw);
+      System.out.println("CPU Slowdown: " + (cpuTq/(cpuTq - cpuTw)));
+      System.out.println("IO tq: " + ioTq);
+      System.out.println("IO tw: " + ioTw);
+      System.out.println("IO Slowdown: " + (ioTq/(ioTq - ioTw)));
+      cputqs[i] = cpuTq;
+      cpuslows[i] = (cpuTq/(cpuTq - cpuTw));
+      iotqs[i] = ioTq;
+      ioslows[i] = (ioTq/(ioTq - ioTw));
+    }
+    double cpuavgTq = 0.0;
+    double cpuavgSlow = 0.0;
+    double ioavgTq = 0.0;
+    double ioavgSlow = 0.0;
+    for (int i = 0; i < trials; i++) {
+      cpuavgTq += cputqs[i];
+      cpuavgSlow += cpuslows[i];
+      ioavgTq += iotqs[i];
+      ioavgSlow += ioslows[i];
+    }
+
+    cpuavgTq /= trials;
+    cpuavgSlow /= trials;
+    ioavgTq /= trials;
+    ioavgSlow /= trials;
+
+    double cpuvarTq = 0.0;
+    double cpuvarSlow = 0.0;
+    double iovarTq = 0.0;
+    double iovarSlow = 0.0;
+    for (int i = 0; i < trials; i++) {
+        cpuvarTq += Math.pow((cputqs[i] - cpuavgTq), 2);
+        cpuvarSlow += Math.pow((cpuslows[i] - cpuavgSlow), 2);
+        iovarTq += Math.pow((iotqs[i] - ioavgTq), 2);
+        iovarSlow += Math.pow((ioslows[i] - ioavgSlow), 2);
+    }
+    cpuvarTq /= (trials - 1);
+    cpuvarSlow /= (trials - 1);
+    iovarTq /= (trials - 1);
+    iovarSlow /= (trials - 1);
+    double cpusdTq = Math.sqrt(cpuvarTq);
+    double cpusdSlow = Math.sqrt(cpuvarSlow);
+    double iosdTq = Math.sqrt(iovarTq);
+    double iosdSlow = Math.sqrt(iovarSlow);
+    System.out.println("Average CPU Bound Process Turnaround Time 97% CI: " + cpuavgTq + " +- " + (2.17 * cpusdTq));
+    System.out.println("Average CPU Bound Process Slowdown 97% CI: " + cpuavgSlow + " +- " + (2.17 * cpusdSlow));
+    System.out.println("Average I/O Bound Process Turnaround Time 97% CI: " + ioavgTq + " +- " + (2.17 * iosdTq));
+    System.out.println("Average I/O Bound Process Slowdown 97% CI: " + ioavgSlow + " +- " + (2.17 * iosdSlow));
 	}
 	
 }

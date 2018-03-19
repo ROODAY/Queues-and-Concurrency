@@ -7,7 +7,6 @@ public class Process {
   public Process(int type) {
     this.type = type;
   }
-
   public void addStep(Request req) {
     history.add(req);
   }
