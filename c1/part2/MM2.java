@@ -123,7 +123,7 @@ public class MM2 extends MM1 {
     
     //System.out.println("Monitor Event at time:" + timestamp);
     //System.out.println("---------------------");
-    double[] qAndW = new double[2];
+    double[] qAndW = new double[4];
     qAndW[0] = queue.size() + serving;
     qAndW[1] = w;
     
