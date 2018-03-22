@@ -9,8 +9,8 @@ public class MM2 extends MM1 {
   public final double LAMBDA2;
   public final double TS2;
 
-  public MM2(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, double lambda, double ts, double lambda2, double ts2){
-    super(name, schedule, deviceList, processes, lambda, ts);
+  public MM2(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, LinkedList<double[]> wtotal, double lambda, double ts, double lambda2, double ts2){
+    super(name, schedule, deviceList, processes, wtotal, lambda, ts);
     this.LAMBDA2 = lambda2;
     this.TS2 = ts2;
   }
@@ -116,19 +116,27 @@ public class MM2 extends MM1 {
     }
 
     //count the number of waiting requests
-    double w = 0;
+    double wcpu = 0;
+    double wio = 0;
     for(Request r: queue){
-      if(r.isWaiting()) w++;
+      if(r.isWaiting()) {
+        if (r.process.type == 0) {
+          wcpu++;
+        } else {
+          wio++;
+        }
+      }
     }
     
     //System.out.println("Monitor Event at time:" + timestamp);
     //System.out.println("---------------------");
-    double[] qAndW = new double[4];
+    double[] qAndW = new double[3];
     qAndW[0] = queue.size() + serving;
-    qAndW[1] = w;
+    qAndW[1] = wcpu;
+    qAndW[2] = wio;
     
     QandW.add(qAndW);
-        
+    wtotal.add(qAndW);
   }
 
   public double getTimeOfNextBirth(Process proc){
@@ -168,15 +176,18 @@ public class MM2 extends MM1 {
     
     
     double finalQ = 0;
-    double finalW = 0;
+    double finalWcpu = 0;
+    double finalWio = 0;
     
     for(double[] qw: QandW){
       finalQ += qw[0];
-      finalW += qw[1];
+      finalWcpu += qw[1];
+      finalWio += qw[2];
     }
     
     finalQ = finalQ/QandW.size();
-    finalW = finalW/QandW.size();
+    finalWcpu = finalWcpu/QandW.size();
+    finalWio = finalWio/QandW.size();
     
     System.out.println("************************************");
     System.out.println("************************************");
@@ -186,7 +197,8 @@ public class MM2 extends MM1 {
     System.out.println("Tw: "+ Tw);
     System.out.println("Tq: "+ Tq);
     System.out.println("average q over the system is: " + finalQ);
-    System.out.println("average w over the system is: " + finalW);
-    System.out.println("utilization: " + (finalQ - finalW)/2);
+    System.out.println("average wcpu over the system is: " + finalWcpu);
+    System.out.println("average wio over the system is: " + finalWio);
+    System.out.println("utilization: " + (finalQ - (finalWcpu + finalWio))/2);
   }
 }

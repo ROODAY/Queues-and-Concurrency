@@ -11,7 +11,8 @@ public class MM1 extends Device {
 	protected Queue<Request> queue;
 	protected LinkedList<Event> schedule;
   protected ArrayList<Process> processes;
-  protected HashMap<String,Device> deviceList;  
+  protected HashMap<String,Device> deviceList; 
+  protected LinkedList<double[]> wtotal;
 	
 	//saves all the previous requests
 	protected LinkedList<Request> log;
@@ -20,7 +21,7 @@ public class MM1 extends Device {
 	LinkedList<double[]>QandW;
 		
 	
-	public MM1(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, double lambda, double ts){
+	public MM1(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, LinkedList<double[]> wtotal, double lambda, double ts){
 		super(name);
 		
 		this.queue = new LinkedList<>();
@@ -30,6 +31,7 @@ public class MM1 extends Device {
 		this.schedule = schedule;
     this.deviceList = deviceList;
     this.processes = processes;
+    this.wtotal = wtotal;
 		this.LAMBDA = lambda;
 		this.TS = ts;
 
@@ -137,29 +139,37 @@ public class MM1 extends Device {
 	 * called when a monitor event happens
 	 */
 	public void onMonitor(double timestamp, double startTime){
-	
-		if(timestamp < startTime) {
-			//don't start lagging before the start time
-			//clear the logs
-			log.clear(); 
-			return;
-		}
+  
+    if(timestamp < startTime) {
+      //don't start lagging before the start time
+      //clear the logs
+      log.clear(); 
+      return;
+    }
 
-		//count the number of waiting requests
-		double w = 0;
-		for(Request r: queue){
-			if(r.isWaiting()) w++;
-		}
-		
-		//System.out.println("Monitor Event at time:" + timestamp);
-		//System.out.println("---------------------");
-		double[] qAndW = new double[2];
-		qAndW[0] = queue.size();
-		qAndW[1] = w;
-		
-		QandW.add(qAndW);
-				
-	}
+    //count the number of waiting requests
+    double wcpu = 0;
+    double wio = 0;
+    for(Request r: queue){
+      if(r.isWaiting()) {
+        if (r.process.type == 0) {
+          wcpu++;
+        } else {
+          wio++;
+        }
+      }
+    }
+    
+    //System.out.println("Monitor Event at time:" + timestamp);
+    //System.out.println("---------------------");
+    double[] qAndW = new double[3];
+    qAndW[0] = queue.size();
+    qAndW[1] = wcpu;
+    qAndW[2] = wio;
+    
+    QandW.add(qAndW);
+    wtotal.add(qAndW);
+  }
 	
 	/**
 	 * 
@@ -205,26 +215,30 @@ public class MM1 extends Device {
 		
 		
 		double finalQ = 0;
-		double finalW = 0;
-		
-		for(double[] qw: QandW){
-			finalQ += qw[0];
-			finalW += qw[1];
-		}
-		
-		finalQ = finalQ/QandW.size();
-		finalW = finalW/QandW.size();
-		
-		System.out.println("************************************");
-		System.out.println("************************************");
-		System.out.println("************************************");
-		
-		System.out.println("Device name: " + getName());
-		System.out.println("Tw: "+ Tw);
-		System.out.println("Tq: "+ Tq);
-		System.out.println("average q over the system is: " + finalQ);
-		System.out.println("average w over the system is: " + finalW);
-		System.out.println("utilization: " + (finalQ - finalW));
+    double finalWcpu = 0;
+    double finalWio = 0;
+    
+    for(double[] qw: QandW){
+      finalQ += qw[0];
+      finalWcpu += qw[1];
+      finalWio += qw[2];
+    }
+    
+    finalQ = finalQ/QandW.size();
+    finalWcpu = finalWcpu/QandW.size();
+    finalWio = finalWio/QandW.size();
+    
+    System.out.println("************************************");
+    System.out.println("************************************");
+    System.out.println("************************************");
+    
+    System.out.println("Device name: " + getName());
+    System.out.println("Tw: "+ Tw);
+    System.out.println("Tq: "+ Tq);
+    System.out.println("average q over the system is: " + finalQ);
+    System.out.println("average wcpu over the system is: " + finalWcpu);
+    System.out.println("average wio over the system is: " + finalWio);
+    System.out.println("utilization: " + (finalQ - (finalWcpu + finalWio)));
 	}
 
 }

@@ -26,6 +26,7 @@ public class Controller {
 	public static LinkedList<Device> devices = new LinkedList<Device>();
   public static HashMap<String,Device> deviceList = new HashMap<String,Device>();  
   public static ArrayList<Process> processes = new ArrayList<Process>();
+  public static LinkedList<double[]> overallW = new LinkedList<double[]>();
   public static Random generator = new Random();
 	
 	/**
@@ -35,16 +36,16 @@ public class Controller {
 	public static LinkedList<Event> initSchedule(){
 		LinkedList<Event> schedule = new LinkedList<Event>();
 		
-		Device cpu = new MM2("cpu", schedule, deviceList, processes, 2, 0.248, 38, 0.008);
+		Device cpu = new MM2("cpu", schedule, deviceList, processes, overallW, 2, 0.248, 38, 0.008);
 		cpu.initializeScehduleWithOneEvent();
 		devices.add(cpu);
     deviceList.put("cpu", cpu);
 
-    Device net = new MM1("net", schedule, deviceList, processes, 0, 0.025);
+    Device net = new MM1("net", schedule, deviceList, processes, overallW, 0, 0.025);
     devices.add(net);
     deviceList.put("net", net);
 
-    Device disk = new MM1("disk", schedule, deviceList, processes, 0, 0.1);
+    Device disk = new MM1("disk", schedule, deviceList, processes, overallW, 0, 0.1);
     devices.add(disk);
     deviceList.put("disk", disk);
 	
@@ -155,6 +156,19 @@ public class Controller {
     System.out.println("Average CPU Bound Process Slowdown 97% CI: " + cpuavgSlow + " +- " + (2.17 * cpusdSlow));
     System.out.println("Average I/O Bound Process Turnaround Time 97% CI: " + ioavgTq + " +- " + (2.17 * iosdTq));
     System.out.println("Average I/O Bound Process Slowdown 97% CI: " + ioavgSlow + " +- " + (2.17 * iosdSlow));
+
+    double finalWcpu = 0;
+    double finalWio = 0;
+    
+    for(double[] qw: overallW){
+      finalWcpu += qw[1];
+      finalWio += qw[2];
+    }
+    
+    finalWcpu = finalWcpu/overallW.size();
+    finalWio = finalWio/overallW.size();
+    System.out.println("average wcpu over the system is: " + finalWcpu);
+    System.out.println("average wio over the system is: " + finalWio);
 	}
 	
 }
