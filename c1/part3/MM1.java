@@ -4,50 +4,55 @@ import java.util.HashMap;
 import java.util.ArrayList;
 
 public class MM1 extends Device {
-	
-	public final double LAMBDA;
-	public final double TS;
-	
-	protected Queue<Request> queue;
-	protected LinkedList<Event> schedule;
+  
+  public final double LAMBDA;
+  public final double TS;
+  
+  protected Queue<Request> queue;
+  protected LinkedList<Event> schedule;
+  // Reference to Controller's masterlist of processes
   protected ArrayList<Process> processes;
-  protected HashMap<String,Device> deviceList; 
+  // Reference to Controller's mapping of devices
+  protected HashMap<String,Device> deviceList;  
+  // Reference to Controller's list of process wait times
   protected LinkedList<double[]> wtotal;
-	
-	//saves all the previous requests
-	protected LinkedList<Request> log;
-	
-	//saves the q and w of the queue, at the time the monitor event occurs
-	LinkedList<double[]>QandW;
-		
-	
-	public MM1(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, LinkedList<double[]> wtotal, double lambda, double ts){
-		super(name);
-		
-		this.queue = new LinkedList<>();
-		this.QandW = new LinkedList<>();
-		this.log = new LinkedList<>();
-		
-		this.schedule = schedule;
+  
+  //saves all the previous requests
+  protected LinkedList<Request> log;
+  
+  //saves the q and w of the queue, at the time the monitor event occurs
+  LinkedList<double[]>QandW;
+    
+  
+  public MM1(String name, LinkedList<Event> schedule, HashMap<String,Device> deviceList, ArrayList<Process> processes, LinkedList<double[]> wtotal, double lambda, double ts){
+    super(name);
+    
+    this.queue = new LinkedList<>();
+    this.QandW = new LinkedList<>();
+    this.log = new LinkedList<>();
+    
+    this.schedule = schedule;
     this.deviceList = deviceList;
     this.processes = processes;
     this.wtotal = wtotal;
-		this.LAMBDA = lambda;
-		this.TS = ts;
+    this.LAMBDA = lambda;
+    this.TS = ts;
 
-	}
-	
-	public double getTS() {
-		return TS;
-	}
-	public LinkedList<Request> getLog() {
-		return log;
-	}
-	
-	public Queue<Request> getQueue() {
-		return queue;
-	}
+  }
+  
+  public double getTS() {
+    return TS;
+  }
+  public LinkedList<Request> getLog() {
+    return log;
+  }
+  
+  public Queue<Request> getQueue() {
+    return queue;
+  }
 
+  // Determines which device a process should go to based on the current device
+  // If the device is null, that means the process has exited the system
   public Device getNextDevice() {
     double prob = Controller.generator.nextDouble();
     Device device;
@@ -72,73 +77,74 @@ public class MM1 extends Device {
     }
     return device;
   }
-	
-	
-	/**
-	 * called when a death event happens
-	 */
-	public void onDeath(Event ev, double timestamp){
-		/**
-		 * request has finished and left the mm1
-		 */
-		Request req = queue.remove();
-		req.setEndedProcessing(timestamp);
-		log.add(req);
-    ev.process.addStep(req);
-		
-		/**
-		 * look for another blocked event in the queue that wants to execute and schedule it's death.
-		 * at this time the waiting request enters processing time.
-		 */
-		if(queue.size() > 0){
-			double timeOfNextDeath = timestamp + getTimeOfNextDeath();
-			queue.peek().setStartedProcessing(timestamp);
-			Event event = new Event(timeOfNextDeath, EventType.DEATH, this, queue.peek().process);
-			schedule.add(event);
-		}
+  
+  
+  /**
+   * called when a death event happens
+   */
+  public void onDeath(Event ev, double timestamp){
+    /**
+     * request has finished and left the mm1
+     */
+    Request req = queue.remove();
+    req.setEndedProcessing(timestamp);
+    log.add(req);
+    ev.process.addStep(req); // Inform respective process that it has finished with this device
+    
+    /**
+     * look for another blocked event in the queue that wants to execute and schedule it's death.
+     * at this time the waiting request enters processing time.
+     */
+    if(queue.size() > 0){
+      double timeOfNextDeath = timestamp + getTimeOfNextDeath();
+      queue.peek().setStartedProcessing(timestamp);
+      Event event = new Event(timeOfNextDeath, EventType.DEATH, this, queue.peek().process);
+      schedule.add(event);
+    }
 
+    // Determine next device to go to and create a birth event for that device
     Device nextDevice = getNextDevice();
     if (nextDevice != null) {
       Event event = new Event(timestamp, EventType.BIRTH, nextDevice, ev.process);
       schedule.add(event);
     }
-	}
-	
-	/**
-	 * called when a birth event happens.
-	 */
-	public void onBirth(Event ev, double timestamp){
-		Request request = new Request(timestamp, ev.process);
-		queue.add(request);
-		
-		
-		/**
-		 * if the queue is empty then start executing directly there is no waiting time.
-		 */
-		if(queue.size() == 1){
-			
-			request.setStartedProcessing(timestamp);
-			Event event = new Event(timestamp + getTimeOfNextDeath(), EventType.DEATH, this, request.process);
-			schedule.add(event);
-		}
-		
-		if(ev.getTag()){
-			/**
-			 * schedule the next arrival
-			 */
-      Process process = new Process(0);
+  }
+  
+  /**
+   * called when a birth event happens.
+   */
+  public void onBirth(Event ev, double timestamp){
+    Request request = new Request(timestamp, ev.process);
+    queue.add(request);
+    
+    
+    /**
+     * if the queue is empty then start executing directly there is no waiting time.
+     */
+    if(queue.size() == 1){
+      request.setStartedProcessing(timestamp);
+      Event event = new Event(timestamp + getTimeOfNextDeath(), EventType.DEATH, this, request.process);
+      schedule.add(event);
+    }
+    
+    // This block is never called from an MM1 queue in this simulator
+    if(ev.getTag()){
+      /**
+       * schedule the next arrival
+       */
+      Process process = new Process(0);  // Create a new process of correct type and add it to the list
       processes.add(process);
-			double time = getTimeOfNextBirth();
-			Event event = new Event(timestamp + time, EventType.BIRTH, this, process);
-			event.setTag(true);
-			schedule.add(event);
-		}
-	}
-	
-	/**
-	 * called when a monitor event happens
-	 */
-	public void onMonitor(double timestamp, double startTime){
+      double time = getTimeOfNextBirth();
+      Event event = new Event(timestamp + time, EventType.BIRTH, this, process);
+      event.setTag(true);
+      schedule.add(event);
+    }
+  }
+  
+  /**
+   * called when a monitor event happens
+   */
+  public void onMonitor(double timestamp, double startTime){
   
     if(timestamp < startTime) {
       //don't start lagging before the start time
@@ -147,7 +153,7 @@ public class MM1 extends Device {
       return;
     }
 
-    //count the number of waiting requests
+    //count the number of waiting requests by type
     double wcpu = 0;
     double wio = 0;
     for(Request r: queue){
@@ -160,61 +166,63 @@ public class MM1 extends Device {
       }
     }
     
-    //System.out.println("Monitor Event at time:" + timestamp);
-    //System.out.println("---------------------");
-    double[] qAndW = new double[3];
+    double[] qAndW = new double[3]; // keep track of number of requests by process type
     qAndW[0] = queue.size();
     qAndW[1] = wcpu;
     qAndW[2] = wio;
     
     QandW.add(qAndW);
-    wtotal.add(qAndW);
+    wtotal.add(qAndW); // Inform the controller's masterlist as well
   }
-	
-	/**
-	 * 
-	 * @return time for the next birth event
-	 */
-	public double getTimeOfNextBirth(){
-		return Event.exp(LAMBDA);
-	}
-	
-	/**
-	 * 
-	 * @return time for the next death event
-	 */
-	public double getTimeOfNextDeath(){
-		return Event.exp(1.0/TS);
-	}
+  
+  /**
+   * 
+   * @return time for the next birth event
+   */
+  public double getTimeOfNextBirth(){
+    return Event.exp(LAMBDA);
+  }
+  
+  /**
+   * 
+   * @return time for the next death event
+   */
+  public double getTimeOfNextDeath(){
+    return Event.exp(1.0/TS);
+  }
 
-	
-	/**
-	 * initializes the device with an event
-	 */
-	@Override
-	public void initializeScehduleWithOneEvent() {
-		double time = getTimeOfNextBirth();
+  
+  /**
+   * initializes the device with an event
+   */
+  @Override
+  public void initializeScehduleWithOneEvent() {
+    double time = getTimeOfNextBirth();
     Process process = new Process(0);
     processes.add(process);
-		Event birthEvent = new Event(time, EventType.BIRTH, this, process);
-		birthEvent.setTag(true);
-		schedule.add(birthEvent);	
-	}
+    Event birthEvent = new Event(time, EventType.BIRTH, this, process);
+    birthEvent.setTag(true);
+    schedule.add(birthEvent); 
+  }
 
-	@Override
-	public void printStats() {
-		double Tw = 0;
-		double Tq = 0;
+  @Override
+  public void printStats() {
+    double Tw = 0;
+    double Tq = 0;
+    double count = 0;
 
-		for(Request r: log){
-			Tw += r.getTw();
-			Tq += r.getTq();
-		}
-		Tq = Tq/log.size();
-		Tw = Tw/log.size();
-		
-		
-		double finalQ = 0;
+    for(Request r: log){
+      if (!r.isWaiting()) { // make sure we only count completed requests
+        Tw += r.getTw();
+        Tq += r.getTq();
+        count++;
+      }
+    }
+    Tq = Tq/count;
+    Tw = Tw/count;
+    
+    
+    double finalQ = 0;
     double finalWcpu = 0;
     double finalWio = 0;
     
@@ -239,6 +247,6 @@ public class MM1 extends Device {
     System.out.println("average wcpu over the system is: " + finalWcpu);
     System.out.println("average wio over the system is: " + finalWio);
     System.out.println("utilization: " + (finalQ - (finalWcpu + finalWio)));
-	}
+  }
 
 }

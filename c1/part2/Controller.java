@@ -12,6 +12,7 @@ public class Controller {
 	 */
 	public static final double MONITOR_INTERVAL = 0.03;
 	public static final int SIMULATION_TIME = 200;
+  public static final int SEED = 43251;
 	
 	/**
 	 * time elapsed time before starting to log
@@ -21,18 +22,21 @@ public class Controller {
 	
 	/**
 	 * holds all the devices in the system
-	 * in this case we have one
 	 */
 	public static LinkedList<Device> devices = new LinkedList<Device>();
+  // Provides a mapping of device names to devices so devices can refer to each other
   public static HashMap<String,Device> deviceList = new HashMap<String,Device>();  
+  // Keeps track of all processes moving through the system
   public static ArrayList<Process> processes = new ArrayList<Process>();
+  // Keeps track of how long each type of process waits in queue
   public static LinkedList<double[]> overallW = new LinkedList<double[]>();
-  public static Random generator = new Random();
+  // Random number generator that takes a seed
+  public static Random generator = new Random(SEED);
 	
-	/**
-	 * initialize the schedule with a birth and a monitor event
-	 * @return a schedule with two events
-	 */
+  /**
+   * initialize the schedule with birth and a monitor events
+   * @return a schedule with events
+   */
 	public static LinkedList<Event> initSchedule(){
 		LinkedList<Event> schedule = new LinkedList<Event>();
 		
@@ -53,8 +57,6 @@ public class Controller {
 		return schedule;
 	}
 	
-	
-	
 	/**
 	 * sorts the schedule according to time, and returns the earliest event.
 	 * @param schedule
@@ -67,6 +69,7 @@ public class Controller {
 	
 	
 	public static void main(String[] args){
+    // Run 20 trials to collect sample data for confidence intervals
     int trials = 20;
     double[] cputqs = new double[trials];
     double[] cpuslows = new double[trials];
@@ -118,6 +121,8 @@ public class Controller {
       iotqs[i] = ioTq;
       ioslows[i] = (ioTq/(ioTq - ioTw));
     }
+    // calculate confidence intervals for turnaround time and slowdown for both types of processes
+    // as well as average time in queue for both types of processes
     double cpuavgTq = 0.0;
     double cpuavgSlow = 0.0;
     double ioavgTq = 0.0;
@@ -169,6 +174,7 @@ public class Controller {
     finalWio = finalWio/overallW.size();
     System.out.println("average wcpu over the system is: " + finalWcpu);
     System.out.println("average wio over the system is: " + finalWio);
+    System.out.println("Seed used: "+ SEED);
 	}
 	
 }

@@ -6,31 +6,32 @@ import java.util.Random;
 
 public class Controller {
 
-	
 	/**
 	 * Simulation constants
 	 */
 	public static final double MONITOR_INTERVAL = 0.03;
 	public static final int SIMULATION_TIME = 200;
+  public static final int SEED = 5612783;
 	
 	/**
 	 * time elapsed time before starting to log
 	 */
 	public static final double LOGGING_START_TIME = 100;
 	
-	
 	/**
 	 * holds all the devices in the system
-	 * in this case we have one
 	 */
 	public static LinkedList<Device> devices = new LinkedList<Device>();
+  // Provides a mapping of device names to devices so devices can refer to each other
   public static HashMap<String,Device> deviceList = new HashMap<String,Device>();  
+  // Keeps track of all processes moving through the system
   public static ArrayList<Process> processes = new ArrayList<Process>();
-  public static Random generator = new Random();
+  // Random number generator that takes a seed
+  public static Random generator = new Random(SEED);
 	
 	/**
-	 * initialize the schedule with a birth and a monitor event
-	 * @return a schedule with two events
+	 * initialize the schedule with birth and a monitor events
+	 * @return a schedule with events
 	 */
 	public static LinkedList<Event> initSchedule(){
 		LinkedList<Event> schedule = new LinkedList<Event>();
@@ -52,8 +53,6 @@ public class Controller {
 		return schedule;
 	}
 	
-	
-	
 	/**
 	 * sorts the schedule according to time, and returns the earliest event.
 	 * @param schedule
@@ -66,6 +65,7 @@ public class Controller {
 	
 	
 	public static void main(String[] args){
+    // Run 20 trials to collect sample data for confidence intervals
     int trials = 20;
     double[] tqs = new double[trials];
     double[] slows = new double[trials];
@@ -104,6 +104,7 @@ public class Controller {
       tqs[i] = systemTq;
       slows[i] = (systemTq/(systemTq - systemTw));
     }
+    // calculate confidence intervals for turnaround time and slowdown
     double avgTq = 0.0;
     double avgSlow = 0.0;
     for (int i = 0; i < trials; i++) {
@@ -126,6 +127,7 @@ public class Controller {
     double sdSlow = Math.sqrt(varSlow);
     System.out.println("Average Turnaround Time 97% CI: " + avgTq + " +- " + (2.17 * sdTq));
     System.out.println("Average Slowdown 97% CI: " + avgSlow + " +- " + (2.17 * sdSlow));
+    System.out.println("Seed used: "+ SEED);
 	}
 	
 }

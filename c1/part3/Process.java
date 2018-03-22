@@ -1,8 +1,10 @@
 import java.util.ArrayList;
 
 public class Process {
+  // Keeps track of which devices this process has visited
   public ArrayList<Request> history = new ArrayList<Request>();
-  public int type; // 0 = cpu 1 = i/o
+   // 0 = cpu, 1 = i/o
+  public int type;
 
   public Process(int type) {
     this.type = type;
@@ -11,23 +13,23 @@ public class Process {
     history.add(req);
   }
 
+  // Sums Tq's of requests in history
   public double totalTq() {
     double sum = 0;
     for (Request r:history) {
-      double val = r.getTq();
-      if (val > 0) {
-        sum += val;
+      if (!r.isWaiting()){
+        sum += r.getTq();
       }
     }
     return sum;
   }
 
+  // Sums Tw's of requests in history
   public double totalTw() {
     double sum = 0;
     for (Request r:history) {
-      double val = r.getTw();
-      if (val > 0) {
-        sum += val;
+      if (!r.isWaiting()){
+        sum += r.getTw();
       }
     }
     return sum;

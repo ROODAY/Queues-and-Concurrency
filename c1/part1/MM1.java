@@ -10,7 +10,9 @@ public class MM1 extends Device {
 	
 	protected Queue<Request> queue;
 	protected LinkedList<Event> schedule;
+  // Reference to Controller's masterlist of processes
   protected ArrayList<Process> processes;
+  // Reference to Controller's mapping of devices
   protected HashMap<String,Device> deviceList;  
 	
 	//saves all the previous requests
@@ -46,6 +48,8 @@ public class MM1 extends Device {
 		return queue;
 	}
 
+  // Determines which device a process should go to based on the current device
+  // If the device is null, that means the process has exited the system
   public Device getNextDevice() {
     double prob = Controller.generator.nextDouble();
     Device device;
@@ -82,7 +86,7 @@ public class MM1 extends Device {
 		Request req = queue.remove();
 		req.setEndedProcessing(timestamp);
 		log.add(req);
-    ev.process.addStep(req);
+    ev.process.addStep(req); // Inform respective process that it has finished with this device
 		
 		/**
 		 * look for another blocked event in the queue that wants to execute and schedule it's death.
@@ -95,6 +99,7 @@ public class MM1 extends Device {
 			schedule.add(event);
 		}
 
+    // Determine next device to go to and create a birth event for that device
     Device nextDevice = getNextDevice();
     if (nextDevice != null) {
       Event event = new Event(timestamp, EventType.BIRTH, nextDevice, ev.process);
@@ -108,24 +113,22 @@ public class MM1 extends Device {
 	public void onBirth(Event ev, double timestamp){
 		Request request = new Request(timestamp, ev.process);
 		queue.add(request);
-    //ev.process.addStep(request);
-		
 		
 		/**
 		 * if the queue is empty then start executing directly there is no waiting time.
 		 */
 		if(queue.size() == 1){
-			
 			request.setStartedProcessing(timestamp);
 			Event event = new Event(timestamp + getTimeOfNextDeath(), EventType.DEATH, this, request.process);
 			schedule.add(event);
 		}
 		
+    // This block is never called from an MM1 queue in this simulator
 		if(ev.getTag()){
 			/**
 			 * schedule the next arrival
 			 */
-      Process process = new Process();
+      Process process = new Process(); // Create a new process and add it to the list
       processes.add(process);
 			double time = getTimeOfNextBirth();
 			Event event = new Event(timestamp + time, EventType.BIRTH, this, process);
@@ -151,15 +154,12 @@ public class MM1 extends Device {
 		for(Request r: queue){
 			if(r.isWaiting()) w++;
 		}
-		
-		//System.out.println("Monitor Event at time:" + timestamp);
-		//System.out.println("---------------------");
+
 		double[] qAndW = new double[2];
 		qAndW[0] = queue.size();
 		qAndW[1] = w;
 		
 		QandW.add(qAndW);
-				
 	}
 	
 	/**
@@ -196,14 +196,17 @@ public class MM1 extends Device {
 	public void printStats() {
 		double Tw = 0;
 		double Tq = 0;
+    double count = 0;
 
 		for(Request r: log){
-			Tw += r.getTw();
-			Tq += r.getTq();
+      if (!r.isWaiting()) { // make sure we only count completed requests
+        Tw += r.getTw();
+        Tq += r.getTq();
+        count++;
+      }
 		}
-		Tq = Tq/log.size();
-		Tw = Tw/log.size();
-		
+		Tq = Tq/count;
+		Tw = Tw/count;
 		
 		double finalQ = 0;
 		double finalW = 0;

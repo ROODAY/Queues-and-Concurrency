@@ -15,8 +15,11 @@ public class MM2 extends MM1 {
     this.TS2 = ts2;
   }
 
+  // Keeps track of how many cores are in use
   public int serving = 0;
+  // Holds the requests currently being serviced
   public Request[] servers = new Request[2];
+  // Saves when currently serviced requests should die so we remove them properly
   public double[] deaths = new double[2];
 
   @Override
@@ -25,6 +28,7 @@ public class MM2 extends MM1 {
      * request has finished and left the mm1
      */
     Request req;
+    // Check the deaths to current time to ensure we remove the correct request
     if (deaths[0] == timestamp) {
       req = servers[0];
       servers[0] = null;
@@ -34,18 +38,21 @@ public class MM2 extends MM1 {
     }
     req.setEndedProcessing(timestamp);
     log.add(req);
-    ev.process.addStep(req);
+    ev.process.addStep(req); // Inform process that request has finished with device
     serving--;
     
     /**
      * look for another blocked event in the queue that wants to execute and schedule it's death.
      * at this time the waiting request enters processing time.
+     * makes sure that servers are free as well
      */
     while(queue.size() > serving && serving < 2){
       serving++;
       Request request = queue.remove();
       request.setStartedProcessing(timestamp);
       double time = timestamp + getTimeOfNextDeath(request.process);
+
+      // Check which server is free and allocate it to request
       if (servers[0] == null) {
         servers[0] = request;
         deaths[0] = time;
@@ -57,6 +64,7 @@ public class MM2 extends MM1 {
       schedule.add(event);
     }
 
+    // Determine next device to send finished request to and create birth event for that device
     Device nextDevice = getNextDevice();
     if (nextDevice != null) {
       Event event = new Event(timestamp, EventType.BIRTH, nextDevice, ev.process);
@@ -72,15 +80,16 @@ public class MM2 extends MM1 {
     Request req = new Request(timestamp, ev.process);
     queue.add(req);
     
-    
     /**
-     * if the queue is empty then start executing directly there is no waiting time.
+     * if the queue is empty and servers are available then start executing directly there is no waiting time.
      */
     if (queue.size() == 1 && serving < 2){
       serving++;
       Request request = queue.remove();
       request.setStartedProcessing(timestamp);
       double time = timestamp + getTimeOfNextDeath(request.process);
+
+      // Check to see which server is free
       if (servers[0] == null) {
         servers[0] = request;
         deaths[0] = time;
@@ -96,7 +105,7 @@ public class MM2 extends MM1 {
       /**
        * schedule the next arrival
        */
-      Process process = new Process(ev.process.type);
+      Process process = new Process(ev.process.type); // Create new process of correct type and add to list
       processes.add(process);
       double time = getTimeOfNextBirth(process);
       Event event = new Event(timestamp + time, EventType.BIRTH, this, process);
@@ -115,7 +124,7 @@ public class MM2 extends MM1 {
       return;
     }
 
-    //count the number of waiting requests
+    //count the number of waiting requests by process type
     double wcpu = 0;
     double wio = 0;
     for(Request r: queue){
@@ -128,25 +137,26 @@ public class MM2 extends MM1 {
       }
     }
     
-    //System.out.println("Monitor Event at time:" + timestamp);
-    //System.out.println("---------------------");
     double[] qAndW = new double[3];
     qAndW[0] = queue.size() + serving;
     qAndW[1] = wcpu;
     qAndW[2] = wio;
     
     QandW.add(qAndW);
-    wtotal.add(qAndW);
+    wtotal.add(qAndW); // Inform controller's list of process wait times
   }
 
+  // Modified version of MM1 function that generates appropriate time based on process type
   public double getTimeOfNextBirth(Process proc){
     return proc.type == 0 ? Event.exp(LAMBDA) : Event.exp(LAMBDA2);
   }
   
+  // Modified version of MM1 function that generates appropriate time based on process type
   public double getTimeOfNextDeath(Process proc){
     return proc.type == 0 ? Event.exp(1.0/TS) : Event.exp(1.0/TS2);
   }
 
+  // Schedules 2 events now, one for each type of process
   @Override
   public void initializeScehduleWithOneEvent() {
     Process cpuProcess = new Process(0);
@@ -166,14 +176,17 @@ public class MM2 extends MM1 {
   public void printStats() {
     double Tw = 0;
     double Tq = 0;
+    double count = 0;
 
     for(Request r: log){
-      Tw += r.getTw();
-      Tq += r.getTq();
+      if (!r.isWaiting()) { // make sure we only count completed requests
+        Tw += r.getTw();
+        Tq += r.getTq();
+        count++;
+      }
     }
-    Tq = Tq/log.size();
-    Tw = Tw/log.size();
-    
+    Tq = Tq/count;
+    Tw = Tw/count;
     
     double finalQ = 0;
     double finalWcpu = 0;
