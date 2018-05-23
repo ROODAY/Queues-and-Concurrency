@@ -1,2 +1,3 @@
-# Discrete-Event-Simulator
-For CS 350
+# Queues and Concurrency
+
+Exercises in queuing theory and concurrency control
